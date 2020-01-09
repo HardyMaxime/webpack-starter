@@ -1,34 +1,51 @@
 const Path = require('path');
+const assetPath = Path.resolve(__dirname, "../src");
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+let dev = process.env.NODE_ENV !== "production";
+/* Function pour enregistrer les pages html */
+const fs = require("fs");
+let templates = [];
+let files = fs.readdirSync(assetPath);
+
+files.forEach(file => {
+  if (file.match(/\.html$/)) {
+    let filename = file.substring(0, file.length - 4);
+    templates.push(
+      new HtmlWebpackPlugin({
+        template: Path.resolve(__dirname, `${assetPath}/${filename}html`),
+        filename: filename + "html"
+      })
+    );
+  }
+});
 
 module.exports = {
   entry: {
-    app: Path.resolve(__dirname, '../src/scripts/index.js')
+    main: [`${assetPath}/scripts/index.js`, `${assetPath}/styles/index.scss`]
   },
   output: {
-    path: Path.join(__dirname, '../build'),
-    filename: 'js/[name].js'
+    path: Path.join(__dirname, "../build"),
+    filename: "js/[name].js"
   },
   optimization: {
     splitChunks: {
-      chunks: 'all',
+      chunks: "all",
       name: false
     }
   },
   plugins: [
     new CleanWebpackPlugin(),
     new CopyWebpackPlugin([
-      { from: Path.resolve(__dirname, '../public'), to: 'public' }
+      { from: Path.resolve(__dirname, "../public"), to: "public" },
+      { from: Path.resolve(__dirname, "../src/img"), to: "img" }
     ]),
-    new HtmlWebpackPlugin({
-      template: Path.resolve(__dirname, '../src/index.html')
-    })
+    ...templates
   ],
   resolve: {
     alias: {
-      '~': Path.resolve(__dirname, '../src')
+      "~": Path.resolve(__dirname, "../src")
     }
   },
   module: {
@@ -36,17 +53,32 @@ module.exports = {
       {
         test: /\.mjs$/,
         include: /node_modules/,
-        type: 'javascript/auto'
+        type: "javascript/auto"
       },
       {
-        test: /\.(ico|jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2)(\?.*)?$/,
-        use: {
-          loader: 'file-loader',
-          options: {
-            name: '[path][name].[ext]'
+        test: /\.(woff2?|eot|ttf|otf|wav)(\?.*)?$/,
+        use: [
+          {
+            loader: "file-loader",
+            options: {
+              name: `[name]${dev ? "" : ".[hash]"}.[ext]`,
+              useRelativePath: !dev
+            }
           }
-        }
+        ]
       },
+      {
+        test: /\.(png|jpe?g|gif|svg)$/i,
+        use: [
+          {
+            loader: "url-loader",
+            options: {
+              limit: 8192,
+              name: `[name]${dev ? "" : ".[hash]"}.[ext]`
+            }
+          }
+        ]
+      }
     ]
   }
 };
